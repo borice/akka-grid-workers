@@ -7,7 +7,7 @@ import scala.Some
 import akka.actor.RootActorPath
 
 object Producer {
-  private case object CoordinatorReady
+  private case class CoordinatorReady(actor: ActorRef)
 
   case object NoMoreWork
 }
@@ -24,16 +24,17 @@ class Producer(count: Int) extends Actor with ActorLogging {
     case Some(address) =>
       context.actorSelection(RootActorPath(address) / "user" / "watcher" / "coordinator")
         .resolveOne(10.seconds).onSuccess {
-          case actor =>
-            log.info("Coordinator found at {}", actor.path)
-            coordinator = context.watch(actor)
-            self ! CoordinatorReady
+          case actor => self ! CoordinatorReady(actor)
         }
     case _ =>
   }
 
   override def receive = {
-    case CoordinatorReady => produceWork()
+    case CoordinatorReady(actor) =>
+      log.info("Coordinator found at {}", actor.path)
+      coordinator = context.watch(actor)
+      produceWork()
+
     case Terminated(_) => context.stop(self)
   }
 

@@ -8,6 +8,8 @@ import akka.actor.RootActorPath
 import akka.actor.SupervisorStrategy.{Restart, Stop}
 
 object Worker {
+  private case class CoordinatorReady(actor: ActorRef)
+
   // messages from executor
   case class ExecuteDone(result: Option[Any])
 }
@@ -25,10 +27,7 @@ class Worker extends Actor with ActorLogging {
     case Some(address) =>
       context.actorSelection(RootActorPath(address) / "user" / "watcher" / "coordinator")
         .resolveOne(10.seconds).onSuccess {
-          case actor =>
-            log.info("Coordinator found at {}", actor.path)
-            coordinator = context.watch(actor)
-            coordinator ! Register
+          case actor => self ! CoordinatorReady(actor)
         }
     case _ =>
   }
@@ -44,7 +43,15 @@ class Worker extends Actor with ActorLogging {
       Restart
   }
 
-  override def receive = idle
+  override def receive = waitForCoordinator
+
+  def waitForCoordinator: Receive = {
+    case CoordinatorReady(actor) =>
+      log.info("Coordinator found at {}", actor.path)
+      coordinator = context.watch(actor)
+      coordinator ! Register
+      context become idle
+  }
 
   def idle: Receive = {
     case work: Work =>
