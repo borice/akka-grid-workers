@@ -29,6 +29,7 @@ class Coordinator(workTimeout: FiniteDuration) extends Actor with ActorLogging {
   val producerTimes = collection.mutable.ListBuffer.empty[Long]
   val workerTimes = collection.mutable.ListBuffer.empty[Long]
   var totalWorkReceived = 0
+  var workDone = 0
 
   val jobTimeoutCheckTask = system.scheduler.schedule(
     initialDelay = workTimeout / 2,
@@ -49,6 +50,7 @@ class Coordinator(workTimeout: FiniteDuration) extends Actor with ActorLogging {
 
     case WorkDone =>
       require(workers(sender).isDefined, s"WorkDone received for idle worker ${sender.path}")
+      workDone += 1
       workerTimes += (System.currentTimeMillis() - workers(sender).get.submitTime)
       workers += sender -> None
       sendWorkIfAvailable(Some(sender)) || stopIfNoMoreWork()
@@ -81,7 +83,8 @@ class Coordinator(workTimeout: FiniteDuration) extends Actor with ActorLogging {
     case JobTimeoutCheckTick =>
       // for now I won't worry about job timeouts - i'll use this timer for reporting the coordinator state
       val outstanding = workers.values.filter(_.isDefined).size
-      log.info(s"[STATUS] Queue length: ${workQueue.length}, running: $outstanding, noMoreWork: $noMoreWork, workers: ${workers.size}, workReceived: $totalWorkReceived")
+      log.info(s"[STATUS] Queue length: ${workQueue.length}, running: $outstanding, noMoreWork: $noMoreWork, " +
+        s"workers: ${workers.size}, workReceived: $totalWorkReceived, workDone: $workDone")
   }
 
   def idleWorker = workers.find(_._2 == None).map(_._1)

@@ -23,7 +23,7 @@ class Producer(count: Int) extends Actor with ActorLogging {
   cluster.state.roleLeader("coordinator") match {
     case Some(address) =>
       context.actorSelection(RootActorPath(address) / "user" / "watcher" / "coordinator")
-        .resolveOne(5.seconds).onSuccess {
+        .resolveOne(10.seconds).onSuccess {
           case actor =>
             log.info("Coordinator found at {}", actor.path)
             coordinator = context.watch(actor)
