@@ -1,0 +1,5 @@
+package grid
+
+object Implicits {
+
+}

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!--
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>${logfile}</file>
+        <append>false</append>
+        <encoder>
+            <pattern>%date{HH:mm:ss} [%logger{0}:%L] [%level] - %msg%n%ex{short}</pattern>
+        </encoder>
+    </appender>
+    -->
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%date{HH:mm:ss} [%logger{0}:%L] [%level] - %msg%n%ex{short}</pattern>
+        </encoder>
+    </appender>
+
+    <root level="DEBUG">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>
