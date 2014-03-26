@@ -9,12 +9,13 @@ import akka.actor.SupervisorStrategy.{Restart, Stop}
 
 object Worker {
   private case class CoordinatorReady(actor: ActorRef)
+  private case object IdentifyTimeout
 
   // messages from executor
   case class ExecuteDone(result: Option[Any])
 }
 
-class Worker extends Actor with ActorLogging {
+class Worker(outputDir: String) extends Actor with ActorLogging {
   import Coordinator._
   import Worker._
   import context.dispatcher
@@ -23,16 +24,19 @@ class Worker extends Actor with ActorLogging {
   val cluster = Cluster(system)
   var coordinator = ActorRef.noSender
 
-  cluster.state.roleLeader("coordinator") match {
-    case Some(address) =>
-      context.actorSelection(RootActorPath(address) / "user" / "watcher" / "coordinator")
-        .resolveOne(10.seconds).onSuccess {
-          case actor => self ! CoordinatorReady(actor)
-        }
-    case _ =>
+  val coordinatorPath = cluster.state.roleLeader("coordinator") match {
+    case Some(address) => RootActorPath(address) / "user" / "watcher" / "coordinator"
+    case _ => throw new Exception("No cluster node with role 'coordinator' found!")
   }
 
-  val executor = context.watch(context.actorOf(Props[Executor], "executor"))
+  findCoordinator()
+
+  def findCoordinator() = {
+    context.actorSelection(coordinatorPath) ! Identify(coordinatorPath)
+    context.system.scheduler.scheduleOnce(3.seconds, self, IdentifyTimeout)
+  }
+
+  val executor = context.watch(context.actorOf(Props(classOf[Executor], outputDir), "executor"))
 
   override def supervisorStrategy = OneForOneStrategy() {
     case _: ActorInitializationException => Stop
@@ -46,11 +50,16 @@ class Worker extends Actor with ActorLogging {
   override def receive = waitForCoordinator
 
   def waitForCoordinator: Receive = {
-    case CoordinatorReady(actor) =>
+    case ActorIdentity(`coordinatorPath`, Some(actor)) =>
       log.info("Coordinator found at {}", actor.path)
       coordinator = context.watch(actor)
       coordinator ! Register
       context become idle
+
+    case ActorIdentity(`coordinatorPath`, None) =>
+      log.warning("Coordinator not yet available: {}", coordinatorPath)
+
+    case IdentifyTimeout => findCoordinator()
   }
 
   def idle: Receive = {
@@ -67,6 +76,7 @@ class Worker extends Actor with ActorLogging {
 
   override def unhandled(message: Any): Unit = message match {
     case Terminated(_) => context.stop(self)
+    case IdentifyTimeout =>  // ignore
     case _ => super.unhandled(message)
   }
 }

@@ -1,3 +1,3 @@
 package grid
 
-case class Work(payload: Any, submitTime:Long = System.currentTimeMillis())
+case class Work(payload: String)

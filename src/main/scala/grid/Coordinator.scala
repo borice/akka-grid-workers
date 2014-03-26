@@ -26,8 +26,6 @@ class Coordinator(workTimeout: FiniteDuration) extends Actor with ActorLogging {
   private val workQueue = Queue.empty[Work]
   var noMoreWork = false
 
-  val producerTimes = collection.mutable.ListBuffer.empty[Long]
-  val workerTimes = collection.mutable.ListBuffer.empty[Long]
   var totalWorkReceived = 0
   var workDone = 0
 
@@ -51,18 +49,16 @@ class Coordinator(workTimeout: FiniteDuration) extends Actor with ActorLogging {
     case WorkDone =>
       require(workers(sender).isDefined, s"WorkDone received for idle worker ${sender.path}")
       workDone += 1
-      workerTimes += (System.currentTimeMillis() - workers(sender).get.submitTime)
       workers += sender -> None
       sendWorkIfAvailable(Some(sender)) || stopIfNoMoreWork()
 
     case WorkFailed(exception) =>
-      log.error(exception, "WorkFailed from {}", sender.path)
+      log.error(exception, "WorkFailed on {} from {}", workers(sender).get.payload, sender.path)
       workers += sender -> None
       sendWorkIfAvailable(Some(sender)) || stopIfNoMoreWork()
 
     case work: Work if !noMoreWork =>
       totalWorkReceived += 1
-      producerTimes += (System.currentTimeMillis() - work.submitTime)
       workQueue.enqueue(work)
       sendWorkIfAvailable(idleWorker)
 
@@ -83,15 +79,14 @@ class Coordinator(workTimeout: FiniteDuration) extends Actor with ActorLogging {
     case JobTimeoutCheckTick =>
       // for now I won't worry about job timeouts - i'll use this timer for reporting the coordinator state
       val outstanding = workers.values.filter(_.isDefined).size
-      log.info(s"[STATUS] Queue length: ${workQueue.length}, running: $outstanding, noMoreWork: $noMoreWork, " +
-        s"workers: ${workers.size}, workReceived: $totalWorkReceived, workDone: $workDone")
+      log.info(f"[STATUS] Q: ${workQueue.length}%,d  R: $outstanding%,d  W: ${workers.size}%,d  D: $workDone%,d  T: $totalWorkReceived%,d  noMoreWork: $noMoreWork")
   }
 
   def idleWorker = workers.find(_._2 == None).map(_._1)
 
   def sendWorkIfAvailable(someWorker: Option[ActorRef]): Boolean = someWorker match {
     case Some(worker) if workQueue.nonEmpty =>
-      val work = workQueue.dequeue().copy(submitTime = System.currentTimeMillis())
+      val work = workQueue.dequeue()
       worker ! work
       workers += worker -> Some(work)
       true
@@ -103,8 +98,6 @@ class Coordinator(workTimeout: FiniteDuration) extends Actor with ActorLogging {
     val finishedWork = noMoreWork && workQueue.isEmpty && workers.find(_._2.isDefined).isEmpty
     if (finishedWork) {
       log.info("Finished all work - shutting down")
-      // output the times so that they can be extracted from the logs and loaded into Excel for analysis
-      producerTimes.zip(workerTimes).foreach(time => println(s"${time._1} ${time._2}"))
       context.stop(self)
     }
     finishedWork

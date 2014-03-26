@@ -11,15 +11,14 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= {
-  val akkaVersion = "2.3.0"
+  val akkaVersion = "2.3.1"
   Seq(
-//    "org.rogach"                    %% "scallop"            % "0.9.5",
-//    "com.github.scala-incubator.io" %% "scala-io-core"      % "0.4.2",
-//    "com.github.scala-incubator.io" %% "scala-io-file"      % "0.4.2",
-//    "com.google.guava"              %  "guava"              % "16.0.1",
-//    "org.apache.opennlp"            %  "opennlp-tools"      % "1.5.3",
-//    "com.github.tototoshi"          %% "scala-csv"          % "1.0.0",
-//    "com.jsuereth"                  %% "scala-arm"          % "1.3",
+    "com.github.scala-incubator.io" %% "scala-io-core"      % "0.4.2",
+    "com.github.scala-incubator.io" %% "scala-io-file"      % "0.4.2",
+    "com.google.guava"              %  "guava"              % "16.0.1",
+    "org.apache.opennlp"            %  "opennlp-tools"      % "1.5.3",
+    "com.github.tototoshi"          %% "scala-csv"          % "1.0.0",
+    "com.jsuereth"                  %% "scala-arm"          % "1.3",
     "com.typesafe"                  %% "scalalogging-slf4j" % "1.0.1",
     "ch.qos.logback"                %  "logback-classic"    % "1.0.13",
     "com.typesafe.akka"             %% "akka-slf4j"         % akkaVersion,

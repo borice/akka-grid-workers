@@ -49,6 +49,12 @@ class CoordinatorMain extends BootableCluster with Logging {
 
   override def memberUp: Unit = {
     logger.info("MemberUp!")
+
+    // FIXME: FOR TESTING
+    val dataDir = config.getString("producer.dataDir")
+    val initialDelay = config.getDuration("producer.initialDelay", TimeUnit.SECONDS).seconds
+    system.get.actorOf(Props(classOf[Producer], dataDir, initialDelay), "producer")
+
     val workTimeout = config.getDuration("coordinator.workTimeout", TimeUnit.SECONDS).seconds
     watcher = Some(system.get.actorOf(Props(classOf[ActorWatcher], Props(classOf[Coordinator], workTimeout), "coordinator"), "watcher"))
   }
@@ -59,7 +65,8 @@ class WorkerMain extends BootableCluster with Logging {
 
   override def memberUp: Unit = {
     logger.info("MemberUp!")
-    watcher = Some(system.get.actorOf(Props(classOf[ActorWatcher], Props[Worker], "worker"), "watcher"))
+    val outputDir = config.getString("worker.outputDir")
+    watcher = Some(system.get.actorOf(Props(classOf[ActorWatcher], Props(classOf[Worker], outputDir), "worker"), "watcher"))
   }
 }
 
