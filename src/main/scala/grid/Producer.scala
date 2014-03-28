@@ -10,6 +10,7 @@ import akka.actor.ActorIdentity
 import scala.Some
 import akka.actor.Identify
 import java.nio.file.attribute.BasicFileAttributes
+import scalax.io.{Output, Resource}
 
 object Producer {
   private case object StartProduce
@@ -60,17 +61,28 @@ class Producer(dataDir: String, initialDelay: FiniteDuration) extends Actor with
     log.info("Producing work...")
     var workCount = 0
     val dataPath = FileSystems.getDefault().getPath(dataDir)
+    val len = dataPath.toString.length + 1
+    val output:Output = Resource.fromFile("idmap.csv")
 
-    Files.walkFileTree(dataPath, new SimpleFileVisitor[Path] {
-      override def visitFile(file: Path, attrs: BasicFileAttributes) = {
-        val f = file.toString
-        if (f.toLowerCase.endsWith(".zip")) {
-          coordinator ! Work(f)
-          workCount += 1
+    for {
+      processor <- output.outputProcessor
+      out = processor.asOutput
+    }{
+      Files.walkFileTree(dataPath, new SimpleFileVisitor[Path] {
+        override def visitFile(file: Path, attrs: BasicFileAttributes) = {
+          val f = file.toString
+          if (f.toLowerCase.endsWith(".zip")) {
+            workCount += 1
+            val prefix = f.substring(len).takeWhile(_ != '/')
+            val fid = com.google.common.io.Files.getNameWithoutExtension(f)
+            val htid = s"$prefix.$fid"
+            coordinator ! Work(f, htid, workCount)
+            out.write(s"$workCount\t$htid\n")
+          }
+          FileVisitResult.CONTINUE
         }
-        FileVisitResult.CONTINUE
-      }
-    })
+      })
+    }
 
     coordinator ! NoMoreWork
     log.info(f"Producer completed: $workCount%,d work items produced")

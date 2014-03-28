@@ -53,7 +53,7 @@ class Coordinator(workTimeout: FiniteDuration) extends Actor with ActorLogging {
       sendWorkIfAvailable(Some(sender)) || stopIfNoMoreWork()
 
     case WorkFailed(exception) =>
-      log.error(exception, "WorkFailed on {} from {}", workers(sender).get.payload, sender.path)
+      log.error(exception, "WorkFailed on {} from {}", workers(sender).get.file, sender.path)
       workers += sender -> None
       sendWorkIfAvailable(Some(sender)) || stopIfNoMoreWork()
 

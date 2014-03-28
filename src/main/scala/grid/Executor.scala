@@ -18,7 +18,7 @@ class Executor(outputDir: String) extends Actor with ActorLogging {
   val PageNumber = """(\p{N}+)$""".r
 
   override def receive = {
-    case Work(zipFilePath) =>
+    case Work(zipFilePath, htid, docId) =>
       for (zipFile <- managed(new ZipFile(new File(zipFilePath), Charsets.UTF_8))) {
         val stats = zipFile.entries().filterNot(_.isDirectory).withFilter(getPageNumber(_).isDefined).map(ze => {
           val pageId = getPageNumber(ze).get
@@ -29,12 +29,16 @@ class Executor(outputDir: String) extends Actor with ActorLogging {
           pageId -> ocrPage.calculateStatistics()
         }).toIndexedSeq.sortBy(_._1)
 
-        val docName = Files.getNameWithoutExtension(zipFilePath)
-        val csvFile = new File(outputDir, s"${docName}.csv")
+        val csvFile = new File(outputDir, s"$htid.csv")
         for (writer <- managed(CSVWriter.open(csvFile))) {
           writer.writeRow(List("docId", "page", "tokenCount", "correctableScore", "qualityScore"))
           writer.writeAll(stats.map {
-            case (pageId, stats) => List(docName, pageId, stats.getTokenCount, stats.getCorrectableScore, stats.getQualityScore)
+            case (pageId, stats) =>
+              val cscore = stats.getCorrectableScore
+              val qscore = stats.getQualityScore
+              val corrScore = if (cscore.isNaN) """\N""" else cscore.toString
+              val qualScore = if (qscore.isNaN) """\N""" else qscore.toString
+              List(docId.toString, pageId.toString, stats.getTokenCount.toString, corrScore, qualScore)
           })
         }
       }

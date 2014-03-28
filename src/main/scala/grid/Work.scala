@@ -1,3 +1,3 @@
 package grid
 
-case class Work(payload: String)
+case class Work(file: String, htid: String, id: Int)
