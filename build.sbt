@@ -11,7 +11,7 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= {
-  val akkaVersion = "2.3.1"
+  val akkaVersion = "2.3.6"
   Seq(
     "com.github.scala-incubator.io" %% "scala-io-core"      % "0.4.2",
     "com.github.scala-incubator.io" %% "scala-io-file"      % "0.4.2",

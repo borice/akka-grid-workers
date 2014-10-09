@@ -29,7 +29,10 @@ class Executor(outputDir: String) extends Actor with ActorLogging {
           pageId -> ocrPage.calculateStatistics()
         }).toIndexedSeq.sortBy(_._1)
 
-        val csvFile = new File(outputDir, s"$htid.csv")
+        val prefix = htid.takeWhile(_ != '.')
+        val outDir = s"$outputDir/$prefix"
+
+        val csvFile = new File(outDir, s"$htid.csv")
         for (writer <- managed(CSVWriter.open(csvFile))) {
           writer.writeRow(List("docId", "page", "tokenCount", "correctableScore", "qualityScore"))
           writer.writeAll(stats.map {

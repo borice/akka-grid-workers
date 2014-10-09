@@ -15,7 +15,7 @@ object Worker {
   case class ExecuteDone(result: Option[Any])
 }
 
-class Worker(outputDir: String) extends Actor with ActorLogging {
+class Worker(executorProps: Props) extends Actor with ActorLogging {
   import Coordinator._
   import Worker._
   import context.dispatcher
@@ -36,7 +36,7 @@ class Worker(outputDir: String) extends Actor with ActorLogging {
     context.system.scheduler.scheduleOnce(3.seconds, self, IdentifyTimeout)
   }
 
-  val executor = context.watch(context.actorOf(Props(classOf[Executor], outputDir), "executor"))
+  val executor = context.watch(context.actorOf(executorProps, "executor"))
 
   override def supervisorStrategy = OneForOneStrategy() {
     case _: ActorInitializationException => Stop

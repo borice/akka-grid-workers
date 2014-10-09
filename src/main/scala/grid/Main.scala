@@ -66,7 +66,8 @@ class WorkerMain extends BootableCluster with Logging {
   override def memberUp: Unit = {
     logger.info("MemberUp!")
     val outputDir = config.getString("worker.outputDir")
-    watcher = Some(system.get.actorOf(Props(classOf[ActorWatcher], Props(classOf[Worker], outputDir), "worker"), "watcher"))
+    val executorProps = Props(classOf[Executor], outputDir)
+    watcher = Some(system.get.actorOf(Props(classOf[ActorWatcher], Props(classOf[Worker], executorProps), "worker"), "watcher"))
   }
 }
 
